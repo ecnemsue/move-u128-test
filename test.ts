@@ -1,4 +1,3 @@
-import { Transaction } from '@mysten/sui/transactions';
 import { Transaction } from "@mysten/sui/transactions";
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { bcs } from "@mysten/sui/bcs";
@@ -308,7 +307,15 @@ if (typename=='u64'){
 
 await full_mul_u64(BigInt(34673429),BigInt(49517601571224));
 
-await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));
+await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));//expect to be 1716945048348637962168
+
+
+
+
+
+
+
+
 // await getliq(BigInt(60257519765924248467716150),BigInt(60438554690243754872543894),1);
 // await getamount(BigInt(60257519765924248467716150),BigInt(60438554690243754872543894),BigInt(1090544106));
 // await full_mul(BigInt(34673429775949185766360837292402478),BigInt(181034924319506404827744));
