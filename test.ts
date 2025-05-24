@@ -1,3 +1,4 @@
+import { Transaction } from '@mysten/sui/transactions';
 import { Transaction } from "@mysten/sui/transactions";
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { bcs } from "@mysten/sui/bcs";
@@ -184,7 +185,7 @@ return opt;
 }
 return 0;
 });
-  console.log('output  full_mul amount:',result);
+  console.log('output  amount:',result);
   return result[0] ;
   
 }
@@ -222,11 +223,48 @@ return opt;
 }
 return 0;
 });
-  console.log('output  full_mul amount:',result);
+  console.log('output  amount:',result);
   return result[0] ;
   
 }
+async function full_mul_u256_dry(a,b){
+  let tx = new Transaction();
+  tx.setGasBudget(184215520);
+      tx.moveCall({
+      target: `0xbdc821b5b1fc09ddd15f5658908d645d8f6e607c201d3e17496164bde198f3ca::mult::mult_256`,
+      arguments: [tx.pure.u256(a),tx.pure.u256(b)],
+      typeArguments: [],
+  });
+  let response = await client_sui.devInspectTransactionBlock({transactionBlock:tx, sender: address});
+ // console.log('response:',response);
+const result=(response).results[0].returnValues.map(([bytes, typename]) => {
+if (typename=='u64'){
+const opt = bcs.u64().parse(Uint8Array.from(bytes));
+return opt;
+}
+if (typename=='u8'){
+const opt = bcs.u8().parse(Uint8Array.from(bytes));
+return opt;
+}
+if (typename=='u128'){
+  const opt = bcs.u128().parse(Uint8Array.from(bytes));
+  return opt;
+  }
+  if (typename=='u256'){
+      const opt = bcs.u256().parse(Uint8Array.from(bytes));
+      return opt;
+      }
+if (typename=='vector<u64>'){
+const opt = bcs.vector(bcs.u64()).parse(Uint8Array.from(bytes));
+return opt;
 
+}
+return 0;
+});
+  console.log('output  amount:',result);
+  return result[0] ;
+  
+}
 async function checked_shlw(a){
     let tx = new Transaction();
     tx.setGasBudget(184215520);
@@ -307,10 +345,15 @@ if (typename=='u64'){
 
 await full_mul_u64(BigInt(34673429),BigInt(49517601571224));
 
-await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));//expect to be 1716945048348637962168
+await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));
+//expect to be 1716945048348637962168
 
 
-
+await full_mul_u256_dry(BigInt(34673429775949185766360837292402478),BigInt(4951760157141521099596496891));
+//result is 171694508075989639272926807135078637209274036313137960775057408
+//=110101011011000100000110110000100010110001001010000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+//but the correct result should be 171694508075989636843131350762516557056011649697762444509708288
+//=110101011011000100000110110000100010110001001010000001110010011000010110101000011101011000111111001101001110010111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 
 
@@ -318,12 +361,8 @@ await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));//expect to be 
 
 // await getliq(BigInt(60257519765924248467716150),BigInt(60438554690243754872543894),1);
 // await getamount(BigInt(60257519765924248467716150),BigInt(60438554690243754872543894),BigInt(1090544106));
-// await full_mul(BigInt(34673429775949185766360837292402478),BigInt(181034924319506404827744));
-// await full_mul(BigInt(34673429775949185766360837292402478),BigInt(4951760157141521099596496891));
-//result is 171694508075989639272926807135078637209274036313137960775057408
-//=110101011011000100000110110000100010110001001010000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-//but the correct result should be 171694508075989636843131350762516557056011649697762444509708288
-//=110101011011000100000110110000100010110001001010000001110010011000010110101000011101011000111111001101001110010111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+
+
 // console.log('try checked_shlw u256 6277101735386680485945574519584605455948642707010614198272')
 // await checked_shlw(BigInt(6277101735386680485945574519584605455948642707010614198272));
 // //6277101735386680763835789423207666494856869170231508749632
