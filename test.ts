@@ -2,7 +2,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import { Transaction } from "@mysten/sui/transactions";
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { bcs } from "@mysten/sui/bcs";
-
+import { TickMath } from '@mmt-finance/clmm-sdk';
+import BN from 'bn.js'
 
 const address = '0xc1a02183f9184607fd75ff6f87a04b252afa0838334007ffe434a1fa380ee6b9';
 
@@ -11,7 +12,7 @@ async function getliq(lowerSqrtPrice,upperSqrtPrice,amount){
 		let tx = new Transaction();
 		tx.setGasBudget(184215520);
 			tx.moveCall({
-			target: `0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb::clmm_math::get_liquidity_from_a`,
+			target: `0x406f52151e7dd65addd93b0bdad7989e82aec20c3ae6971954a5140f14a59e4b::clmm_math::get_liquidity_from_a`,
 			arguments: [tx.pure.u128(lowerSqrtPrice),tx.pure.u128(upperSqrtPrice),tx.pure.u64(amount),tx.pure.bool(true)],
 			typeArguments: [],
 		});
@@ -36,7 +37,7 @@ const result=(await client_sui.devInspectTransactionBlock({transactionBlock:tx, 
 	  return 0;
     });
 		console.log('output liquidiy:',result);
-		return result ;
+		return result[0] ;
 		
 }
 
@@ -44,8 +45,8 @@ async function getamount(lowerSqrtPrice,upperSqrtPrice,liq){
     let tx = new Transaction();
     tx.setGasBudget(184215520);
         tx.moveCall({
-        target: `0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb::clmm_math::get_delta_a`,
-        arguments: [tx.pure.u128(lowerSqrtPrice),tx.pure.u128(upperSqrtPrice),tx.pure.u128(liq),tx.pure.bool(true)],
+        target: `0x406f52151e7dd65addd93b0bdad7989e82aec20c3ae6971954a5140f14a59e4b::clmm_math::get_delta_a`,
+        arguments: [tx.pure.u128(lowerSqrtPrice),tx.pure.u128(upperSqrtPrice),tx.pure.u128(liq),tx.pure.bool(false)],
         typeArguments: [],
     });
     let response = await client_sui.devInspectTransactionBlock({transactionBlock:tx, sender: address});
@@ -112,6 +113,46 @@ if (typename=='u64'){
     return result[0] ;
     
 }
+
+async function test(){
+  let tx = new Transaction();
+  tx.setGasBudget(184215520);
+      tx.moveCall({
+      target: `0x76a638c4a2d8d9ac78e4d8c2910fc1c69e77af1e3969aa77e26f51eaf9e5825a::mult::test`,
+      arguments: [],
+      typeArguments: [],
+  });
+  let response = await client_sui.devInspectTransactionBlock({transactionBlock:tx, sender: address});
+ // console.log('response:',response);
+const result=(response).results[0].returnValues.map(([bytes, typename]) => {
+if (typename=='u64'){
+const opt = bcs.u64().parse(Uint8Array.from(bytes));
+return opt;
+}
+if (typename=='u8'){
+const opt = bcs.u8().parse(Uint8Array.from(bytes));
+return opt;
+}
+if (typename=='u128'){
+  const opt = bcs.u128().parse(Uint8Array.from(bytes));
+  return opt;
+  }
+  if (typename=='u256'){
+      const opt = bcs.u256().parse(Uint8Array.from(bytes));
+      return opt;
+      }
+if (typename=='vector<u64>'){
+const opt = bcs.vector(bcs.u64()).parse(Uint8Array.from(bytes));
+return opt;
+
+}
+return 0;
+});
+  console.log('output  test amount:',result);
+  return result[0] ;
+  
+}
+
 async function full_mul_u64(a,b){
   let tx = new Transaction();
   tx.setGasBudget(184215520);
@@ -227,11 +268,11 @@ return 0;
   return result[0] ;
   
 }
-async function full_mul_u256_dry(a,b){
+async function full_mul_u256_dry(a,b,byhand=false){
   let tx = new Transaction();
   tx.setGasBudget(184215520);
       tx.moveCall({
-      target: `0xbdc821b5b1fc09ddd15f5658908d645d8f6e607c201d3e17496164bde198f3ca::mult::mult_256`,
+      target: `0xd0aaf02cbc3b0400e8a5d38a336aa58da6b3d2b975696df25c22644d5e31d42d::mult::mult_256`+(byhand?'_byhand':''),
       arguments: [tx.pure.u256(a),tx.pure.u256(b)],
       typeArguments: [],
   });
@@ -342,20 +383,28 @@ if (typename=='u64'){
     
 }
 
+let [lower_price,upper_price]=[TickMath.tickIndexToSqrtPriceX64(3000).toString(),TickMath.tickIndexToSqrtPriceX64(3010).toString()]
+let amount='393436027539714918';
+ let liq=await getliq(BigInt(lower_price),BigInt(upper_price),BigInt(amount));
+ let amount_out=await getamount(BigInt(lower_price),BigInt(upper_price),BigInt(Number(liq)));
 
-await full_mul_u64(BigInt(34673429),BigInt(49517601571224));
+console.log('amount in:',amount.toString(),'amount out:',amount_out[0])
 
-await full_mul_u128_dry(BigInt(34673429),BigInt(49517601571224));
-//expect to be 1716945048348637962168
+// await full_mul_u256_dry(BigInt('34673429775949185766360837292402478'),BigInt('181034924319506404827744'));
+// await full_mul(BigInt('34673429775949185766360837292402478'),BigInt('181034924319506404827744'));
+// console.log((new BN('34673429775949185766360837292402478').mul(new BN('181034924319506404827744'))).toString());
 
-
-await full_mul_u256_dry(BigInt(34673429775949185766360837292402478),BigInt(4951760157141521099596496891));
+// await checked_shlw(BigInt('6277101735386680763835789423207666494856869170231508749632'))
+// await full_mul(BigInt('60438554690243754872543894'),BigInt('60257519765924248467716150'));
+//await getamount(BigInt('60257519765924248467716150'),BigInt('60438554690243754872543894'),BigInt('34673429775949185766360837292402478'));
+//await test(); 
 //result is 171694508075989639272926807135078637209274036313137960775057408
 //=110101011011000100000110110000100010110001001010000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-//but the correct result should be 171694508075989636843131350762516557056011649697762444509708288
+//but the correct result should be 171694508075989636843131350589149408176265720865958258047695898
 //=110101011011000100000110110000100010110001001010000001110010011000010110101000011101011000111111001101001110010111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-
-
+// let [lower_price,upper_price]=[TickMath.tickIndexToSqrtPriceX64(300000).toString(),TickMath.tickIndexToSqrtPriceX64(300200).toString()]
+//  let liq=await getliq(BigInt(lower_price),BigInt(upper_price),393436027539714918);
+//  await getamount(BigInt(lower_price),BigInt(upper_price),BigInt(Number(liq)));
 
 
 
